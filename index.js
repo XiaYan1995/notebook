@@ -1,5 +1,4 @@
 var express=require('express');
-var _=require('lodash');
 var path=require('path');
 var bodyparser=require("body-parser");
 var crypto=require('crypto');
@@ -32,7 +31,7 @@ var connections={
 var User=Waterline.Collection.extend({
 	identity:'user',
 	connection:'mysql',
-	schema:true,
+	migrate:'safe',
 	attributes:{
 		username:{
 			type:'string',
@@ -42,40 +41,40 @@ var User=Waterline.Collection.extend({
 			type:'string',
 			required:true
 		},
-		email:'string',
-		createTime:new Date()
-		/*beforeCreate:function(value,cb){
-			value.createTime=new Date();
-			return cb();
-		}*/
+		email:{
+			type:'string'
+		},
+		createTime:{
+			type:'date',
+		}
 	}
+	/*beforeCreate:function(value,cb){
+		value.createTime=new Date();
+		console.log('beforeCreate executed');
+		return cb();
+	}*/	
 });
 
-var Note=Waterline.Collection.extend({
+var Note=Waterline.collection.extend({
 	identity:'note',
 	connection:'mysql',
+	migrate:'safe',
 	attributes:{
 		title:{
 			type:'string',
-			required:true
 		},
 		author:{
-			type:'string',
-			required:true
+			type:'string'
 		},
 		tag:{
-			type:'string',
-			required:true
+			type:'string'
 		},
 		content:{
-			type:'string',
-			required:true
+			type:'string'
 		},
-		createTime:new Date(),
-		/*beforeCreate:function(value,cb){
-			value.createTime=new Date();
-			return cb();
-		}*/
+		createTime:{
+			type:'date',
+		}
 	}		
 });
 
@@ -88,6 +87,7 @@ var config={
 	adapters:adapters,
 	connections:connections
 };
+
 
 //var mongoose=require('mongoose');
 //var models=require('./models/models');
@@ -121,16 +121,16 @@ app.get('/',function(req,res) {
 			.exec(function (err,models) {
 				if (err) {
 					console.log(err);
+					//res.json({err:err},500);
 					return res.redirect('/');
 				}
-				//res.json(models);
-				console.log(models);
 				res.render('index', {
 					title: '首页',
 					user: req.session.user,
-					notes:models
+					notes: allNotes
 				});
-			})
+				//res.json(models);
+			});
 	} else {
 		res.render('index', {
 			title: '首页',
@@ -150,6 +150,24 @@ app.get('/register',function(req,res){
 			user: req.session.user,
 			flag: flag,
 			flag1:flag1,
+			flag2:flag2,
+			title: '注册'
+		});
+		flag=req.session.flag;
+		flag1=req.session.flag1;
+		flag2=req.session.flag2;
+    } else {
+        console.log('您已经登录！');
+        return res.redirect('/');
+    }
+});
+
+app.post('/register',function(req,res){
+	var username=req.body.username,
+		password=req.body.password,
+		passwordRepeat=req.body.passwordRepeat;
+
+	var checkusername=/^\w{3,20}$/;
 			flag2:flag2,
 			title: '注册'
 		});
@@ -300,23 +318,3 @@ app.get('/detail/:_id',function(req,res){
 		if(model){
 			res.render('detail',{
 				title:'笔记详情',
-				user:req.session.user,
-				art:model,
-				moment:moment
-			});
-		
-		}
-	});
-});
-
-orm.initialize(config,function(err,models){
-	if(err){
-		console.error('orm initialize failed.',err);
-		return;
-	}
-	app.models=models.collections;
-	app.connections=models.connections;
-
-	app.listen(3000);
-	console.log('app is running at port 3000');
-});
